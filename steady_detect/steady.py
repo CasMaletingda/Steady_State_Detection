@@ -2,14 +2,17 @@ import numpy as np
 import pandas as pd
 from . import config as C
 
+
 def _runs_from_mask(mask: pd.Series):
     a = mask.values.astype(bool)
     edges = np.flatnonzero(np.diff(np.r_[False, a, False]))
     return list(zip(edges[0::2], edges[1::2])), a
 
+
 def _robust_sigma(y: pd.Series) -> float:
     mad = np.nanmedian(np.abs(y - np.nanmedian(y)))
     return 1.4826 * mad
+
 
 def steady_mask_for_series(y: pd.Series) -> pd.Series:
     y = y.astype(float)
@@ -20,17 +23,17 @@ def steady_mask_for_series(y: pd.Series) -> pd.Series:
         robust_sigma = float(np.nanstd(y))
     gstd = float(np.nanstd(y))
 
-    thr_std   = max(gstd * C.THR_K,   robust_sigma * C.STD_MIN_FRAC)
+    thr_std = max(gstd * C.THR_K, robust_sigma * C.STD_MIN_FRAC)
     thr_range = max(gstd * C.RANGE_K, robust_sigma * C.RANGE_MIN_FRAC)
     thr_slope = max(C.SLOPE_K, C.EPS)
 
     # 滚动统计
     minp = max(10, C.WINDOW // 3)
-    roll_std   = y.rolling(C.WINDOW, center=True, min_periods=minp).std()
-    roll_max   = y.rolling(C.WINDOW, center=True, min_periods=minp).max()
-    roll_min   = y.rolling(C.WINDOW, center=True, min_periods=minp).min()
+    roll_std = y.rolling(C.WINDOW, center=True, min_periods=minp).std()
+    roll_max = y.rolling(C.WINDOW, center=True, min_periods=minp).max()
+    roll_min = y.rolling(C.WINDOW, center=True, min_periods=minp).min()
     roll_range = roll_max - roll_min
-    rel_diff   = y.pct_change(fill_method=None)
+    rel_diff = y.pct_change(fill_method=None)
     roll_slope = rel_diff.rolling(C.WINDOW, center=True, min_periods=minp).median().abs()
 
     if gstd < C.EPS and robust_sigma < C.EPS:
@@ -74,3 +77,15 @@ def steady_mask_for_series(y: pd.Series) -> pd.Series:
             a[s:e] = False
 
     return pd.Series(a, index=y.index)
+
+
+def detect_steady(df: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=df.index)
+    out['Time'] = df['Time']
+    for col in df.columns:
+        if col == 'Time':
+            continue
+        y = df[col]
+        mask = steady_mask_for_series(y)
+        out[col] = y.where(mask, float('nan'))
+    return out
