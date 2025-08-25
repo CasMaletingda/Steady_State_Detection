@@ -1,6 +1,7 @@
 import os
 import pandas as pd
-from . import config as C
+import config as C
+
 
 def write_plots_excel(plots, out_dir="output", basename="绝对稳态"):
     os.makedirs(out_dir, exist_ok=True)
