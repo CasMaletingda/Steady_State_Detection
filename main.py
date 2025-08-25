@@ -1,4 +1,3 @@
-# main.py
 from steady_detect.io_utils import load_data
 from steady_detect.steady import detect_steady
 from steady_detect.plotting import plot_all
